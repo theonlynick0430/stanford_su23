@@ -56,10 +56,15 @@ def random_reset(env):
     env.sim.forward()
     # reseting js does not reset controller so find obs manually 
     # random init pos of eefs
-    peg_init_pos = np.random.uniform(np.array([-0.5, -0.35, 1.25]), np.array([0.5, -0.15, 1.65]))
+    # regions: 
+    # peg - [-0.5:0.5, -0.15:-0.35, 1.25:1.65]
+    # sqr - [-0.5:0.5, 0.15:0.35, 1.25:1.65]
+    peg_init_pos = np.random.uniform(np.array([-0.25, -0.3, 1.35]), np.array([0.5, -0.2, 1.55]))
     peg_quat = convert_quat(env.sim.data.get_body_xquat(env.robots[0].robot_model.eef_name), to="xyzw")
-    sqr_init_pos = np.random.uniform(np.array([-0.5, 0.15, 1.25]), np.array([0.5, 0.35, 1.65]))
+    peg_quat = np.random.normal(peg_quat, np.full(4, 0.1))
+    sqr_init_pos = np.random.uniform(np.array([-0.25, 0.2, 1.35]), np.array([0.25, 0.3, 1.55]))
     sqr_quat = convert_quat(env.sim.data.get_body_xquat(env.robots[1].robot_model.eef_name), to="xyzw")
+    sqr_quat = np.random.normal(sqr_quat, np.full(4, 0.1))
     target_state = encode_target_state(peg_init_pos, peg_quat, sqr_init_pos, sqr_quat)
     obs = linear_action(env, target_state, record=False)
     print("loaded random reset")
@@ -75,16 +80,15 @@ def collect_demo(env, sqr_radius):
     obs = random_reset(env)
 
     # x, y, z -> out of screen, x-axis, y-axis
-    # sqr_target_quat = mat2quat(euler2mat(np.array([-np.pi, 0, 0])))
-    # peg_rot_quat = mat2quat(euler2mat(np.array([-np.pi/2, -np.pi, 0])))
-    # peg_target_quat = quat_multiply(peg_rot_quat, sqr_target_quat)
-    # target_state = encode_target_state(obs["robot0_eef_pos"], peg_target_quat, obs["robot1_eef_pos"], sqr_target_quat)
     sqr_target_pos = np.array([0, 0.25, 1.45])
     sqr_target_pos = np.random.normal(sqr_target_pos, 1e-2)
+    sqr_target_quat = mat2quat(euler2mat(np.array([-np.pi, 0, 0])))
     peg_target_pos = sqr_target_pos.copy()
     peg_target_pos[1] = -peg_target_pos[1]
     peg_target_pos[2] -= sqr_radius
-    target_state = encode_target_state(peg_target_pos, obs["robot0_eef_quat"], sqr_target_pos, obs["robot1_eef_quat"])
+    peg_rot_quat = mat2quat(euler2mat(np.array([-np.pi/2, -np.pi, 0])))
+    peg_target_quat = quat_multiply(peg_rot_quat, sqr_target_quat)
+    target_state = encode_target_state(peg_target_pos, peg_target_quat, sqr_target_pos, sqr_target_quat)
     obs = linear_action(env, target_state)
     peg_to_hole = obs["peg_to_hole"]
     target_state = get_current_state(obs)

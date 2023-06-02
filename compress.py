@@ -4,10 +4,10 @@ import os
 
 def load_data_from_folder(folder_path, filepath, img_h, img_w):
     ee_position = np.empty((0, 6), dtype=np.float64)
-    # ee_orientation = np.empty((0, 8), dtype=np.float64)
+    ee_orientation = np.empty((0, 8), dtype=np.float64)
     image = np.empty((0, img_h, img_w, 3), dtype=np.uint8)
     ego_image = np.empty((0, img_h, img_w, 3), dtype=np.uint8)
-    action = np.empty((0, 6), dtype=np.float64)
+    action = np.empty((0, 12), dtype=np.float64)
     done = np.array([], dtype=bool)
     
     # Iterate over all files in the folder
@@ -22,10 +22,10 @@ def load_data_from_folder(folder_path, filepath, img_h, img_w):
             
             # Assuming the data is stored in a specific variable name, e.g., 'data'
             ee_position = np.append(ee_position, loaded_data["ee_position"], axis=0)
-            # ee_orientation = np.append(ee_orientation, loaded_data["ee_orientation"], axis=0)
+            ee_orientation = np.append(ee_orientation, loaded_data["ee_orientation"], axis=0)
             image = np.append(image, loaded_data["image"], axis=0)
             ego_image = np.append(ego_image, loaded_data["ego_image"], axis=0)
-            action = np.append(action, loaded_data["action"][:, np.r_[0:3, 6:9]], axis=0)
+            action = np.append(action, loaded_data["action"], axis=0)
             done_add = np.full(loaded_data["ee_position"].shape[0], False, dtype=bool)
             done_add[-1] = True
             done = np.append(done, done_add)
@@ -40,7 +40,7 @@ def load_data_from_folder(folder_path, filepath, img_h, img_w):
     np.savez(
         filepath, 
         ee_position=ee_position,
-        # ee_orientation=ee_orientation,
+        ee_orientation=ee_orientation,
         image=image,
         ego_image=ego_image,
         action=action,
