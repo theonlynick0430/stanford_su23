@@ -54,30 +54,29 @@ def random_reset(env):
     sim_state = MjSimState(0, q_initial, np.zeros(q_initial.shape[0]))
     env.sim.set_state(sim_state)
     env.sim.forward()
-    # reseting js does not reset controller so find obs manually 
     # random init pos of eefs
     # regions: 
     # peg - [-0.5:0.5, -0.15:-0.35, 1.25:1.65]
     # sqr - [-0.5:0.5, 0.15:0.35, 1.25:1.65]
-    peg_init_pos = np.random.uniform(np.array([-0.25, -0.3, 1.35]), np.array([0.5, -0.2, 1.55]))
-    peg_quat = convert_quat(env.sim.data.get_body_xquat(env.robots[0].robot_model.eef_name), to="xyzw")
+    obs = env._get_observations(force_update=True)
+    peg_init_pos = np.random.uniform(np.array([-0.25, -0.3, 1.35]), np.array([0.25, -0.2, 1.55]))
+    peg_quat = obs["robot0_eef_quat"]
     peg_quat = np.random.normal(peg_quat, np.full(4, 0.1))
     sqr_init_pos = np.random.uniform(np.array([-0.25, 0.2, 1.35]), np.array([0.25, 0.3, 1.55]))
-    sqr_quat = convert_quat(env.sim.data.get_body_xquat(env.robots[1].robot_model.eef_name), to="xyzw")
+    sqr_quat = obs["robot1_eef_quat"]
     sqr_quat = np.random.normal(sqr_quat, np.full(4, 0.1))
     target_state = encode_target_state(peg_init_pos, peg_quat, sqr_init_pos, sqr_quat)
-    obs = linear_action(env, target_state, record=False)
-    print("loaded random reset")
-    env.render()
-    return obs
+    obs, success = linear_action(env, target_state, record=False)
+    return obs, success
 
 def collect_demo(env, sqr_radius):
 
-    # obs = random_reset(env)
+    obs, success = random_reset(env)
     # while check_contact(env.sim, env.robots[0].robot_model) or check_contact(env.sim, env.robots[1].robot_model):
-    #     obs = random_reset(env)
-
-    obs = random_reset(env)
+    while not success:
+        obs, success = random_reset(env)
+    print("loaded random reset")
+    env.render()
 
     # x, y, z -> out of screen, x-axis, y-axis
     sqr_target_pos = np.array([0, 0.25, 1.45])
@@ -89,12 +88,12 @@ def collect_demo(env, sqr_radius):
     peg_rot_quat = mat2quat(euler2mat(np.array([-np.pi/2, -np.pi, 0])))
     peg_target_quat = quat_multiply(peg_rot_quat, sqr_target_quat)
     target_state = encode_target_state(peg_target_pos, peg_target_quat, sqr_target_pos, sqr_target_quat)
-    obs = linear_action(env, target_state)
+    obs, _ = linear_action(env, target_state)
     peg_to_hole = obs["peg_to_hole"]
     target_state = get_current_state(obs)
     adjust = np.array([-0.1, 0, 0])
     target_state[:3] += peg_to_hole+adjust
-    obs = linear_action(env, target_state)
+    obs, _ = linear_action(env, target_state)
     env.flush()
 
 def playback_demo(env, eps_file):
@@ -140,10 +139,11 @@ def inverse_quaternion(quaternion):
     x, y, z, w = quaternion
     return np.array([-x, -y, -z, w])
 
-def linear_action(env, target_state, thresh=0.05, record=True):
-    obs, _, _, _ = env.step(np.zeros(env.action_dim), record=False)
+def linear_action(env, target_state, thresh=0.05, max_steps=150, record=True):
+    obs = env._get_observations()
     state = get_current_state(obs)
     error = np.linalg.norm(target_state-state)
+    steps = 0
     while error > thresh:
         iquat0 = inverse_quaternion(axisangle2quat(state[3:6]))
         iquat1 = inverse_quaternion(axisangle2quat(state[9:]))
@@ -157,11 +157,14 @@ def linear_action(env, target_state, thresh=0.05, record=True):
             action /= np.linalg.norm(action)
             action *= 0.1
         obs, _, _, _ = env.step(action, record=record)
+        steps += 1
+        if steps >= max_steps:
+            return obs, False
         if record:
             env.render()
         state = get_current_state(obs)
         error = np.linalg.norm(target_state-state)
-    return obs
+    return obs, True
 
     # noise = 0
     # step = 5e-2

@@ -1,7 +1,7 @@
 import numpy as np
 
 if __name__ == "__main__":
-    data = np.load("peg_insertion.npz", allow_pickle=True)
+    data = np.load("peg_insertion_data/demo_10.npz", allow_pickle=True)
     print(data.files)
     print(data["ee_position"].shape)
     print(data["image"].shape)
