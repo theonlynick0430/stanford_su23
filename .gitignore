@@ -6,3 +6,6 @@ __pycache__
 
 # Ignore .npz files
 *.npz
+
+# Ignore models (for now)
+models/

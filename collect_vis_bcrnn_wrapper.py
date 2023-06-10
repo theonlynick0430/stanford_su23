@@ -24,6 +24,7 @@ class BCRNN_DataCollectionWrapper(Wrapper):
         self.directory = directory
         self.demo = None
         self.obs = None
+        self._record = False
 
         if not os.path.exists(directory):
             print("DataCollectionWrapper: making new directory at {}".format(directory))
@@ -63,6 +64,12 @@ class BCRNN_DataCollectionWrapper(Wrapper):
 
         self._reset_data()
 
+    def record(self):
+        self._record = True
+
+    def stop_record(self):
+        self._record = False
+
     def reset(self):
         """
         Extends vanilla reset() function call to accommodate data collection
@@ -76,7 +83,7 @@ class BCRNN_DataCollectionWrapper(Wrapper):
         self.obs = obs
         return obs
 
-    def step(self, action, record=True):
+    def step(self, action):
         """
         Extends vanilla step() function call to accommodate data collection
 
@@ -91,7 +98,7 @@ class BCRNN_DataCollectionWrapper(Wrapper):
                 - (bool) whether the current episode is completed or not
                 - (dict) misc information
         """
-        if record:
+        if self._record:
             # on the first time step, make directories for logging
             if not self.has_interaction:
                 self._on_first_interaction()
