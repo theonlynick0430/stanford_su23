@@ -8,8 +8,8 @@ from robosuite.models.base import MujocoModel
 
 def get_env(dilated=False):
     controller_config = suite.load_controller_config(default_controller="OSC_POSE")
-    controller_config["output_max"] = np.array([0.5, 0.5, 0.5, 0.5, 0.5, 0.5])
-    controller_config["output_min"] = np.array([-0.5, -0.5, -0.5, -0.5, -0.5, -0.5])
+    controller_config["output_max"] = np.array([0.25, 0.25, 0.25, 0.25, 0.25, 0.25])
+    controller_config["output_min"] = np.array([-0.25, -0.25, -0.25, -0.25, -0.25, -0.25])
     return suite.make(
         env_name="TwoArmPegInHole",
         robots=["UR5e", "UR5e"],
@@ -37,7 +37,7 @@ def inverse_quaternion(quaternion):
     x, y, z, w = quaternion
     return np.array([-x, -y, -z, w])
 
-def linear_action(env, target_state, thresh=0.05, max_steps=150, render=True):
+def linear_action(env, target_state, update_target_state=None, thresh=0.01, max_steps=150, render=True):
     obs = env._get_observations()
     state = get_current_state(obs)
     error = np.linalg.norm(target_state-state)
@@ -60,23 +60,10 @@ def linear_action(env, target_state, thresh=0.05, max_steps=150, render=True):
         if render:
             env.render()
         state = get_current_state(obs)
+        if update_target_state: 
+            target_state = update_target_state(obs, target_state)
         error = np.linalg.norm(target_state-state)
     return obs, True
-
-    # noise = 0
-    # step = 5e-2
-    # num_waypoints = int(np.linalg.norm(target_state-state)/step)
-    # vec = target_state-state
-    # for i in range(1, num_waypoints+1):
-    #     waypoint = state + (target_state-state)*i/num_waypoints
-    #     if i % 2:
-    #         waypoint += np.random.normal(0, noise, size=waypoint.shape)
-    #     obs, _, _, _ = env.step(waypoint)
-    #     state = get_current_state(obs)
-    #     env.render()
-    # obs, _, _, _ = env.step(target_state)
-    # env.render()
-    # return obs
 
 def random_reset(env):
     env.reset()
@@ -90,13 +77,13 @@ def random_reset(env):
     # peg - [-0.5:0.5, -0.15:-0.35, 1.25:1.65]
     # sqr - [-0.5:0.5, 0.15:0.35, 1.25:1.65]
     obs = env._get_observations(force_update=True)
-    peg_init_pos = np.random.uniform(np.array([-0.25, -0.3, 1.35]), np.array([0.25, -0.2, 1.55]))
-    peg_quat = obs["robot0_eef_quat"]
-    peg_quat = np.random.normal(peg_quat, np.full(4, 0.1))
-    sqr_init_pos = np.random.uniform(np.array([-0.25, 0.2, 1.35]), np.array([0.25, 0.3, 1.55]))
-    sqr_quat = obs["robot1_eef_quat"]
-    sqr_quat = np.random.normal(sqr_quat, np.full(4, 0.1))
-    target_state = encode_target_state(peg_init_pos, peg_quat, sqr_init_pos, sqr_quat)
+    robot0_init_pos = np.random.uniform(np.array([-0.05, -0.3, 1.4]), np.array([0.05, -0.2, 1.5]))
+    robot0_quat = obs["robot0_eef_quat"]
+    robot0_quat = np.random.normal(robot0_quat, np.full(4, 0.05))
+    robot1_init_pos = np.random.uniform(np.array([-0.05, 0.2, 1.4]), np.array([0.05, 0.3, 1.5]))
+    robot1_quat = obs["robot1_eef_quat"]
+    robot1_quat = np.random.normal(robot1_quat, np.full(4, 0.05))
+    target_state = encode_target_state(robot0_init_pos, robot0_quat, robot1_init_pos, robot1_quat)
     obs, success = linear_action(env, target_state, render=False)
     if success:
         return obs
@@ -136,3 +123,11 @@ def check_contact(sim, geoms_1, geoms_2=None):
         if (c1_in_g1 and c2_in_g2) or (c1_in_g2 and c2_in_g1):
             return True
     return False
+
+def corrected_hole_pos(obs, dilated=False):
+    hole_pos = obs["hole_pos"].copy()
+    if dilated:
+        hole_pos[0] -= 0.055
+    else:
+        hole_pos[0] -= 0.11
+    return hole_pos

@@ -1,19 +1,14 @@
-import sys
 from robosuite.utils.input_utils import *
 from stanford_su23.collect_vis_bcrnn_wrapper import BCRNN_DataCollectionWrapper
 from robosuite.utils.transform_utils import euler2mat, mat2quat, quat_multiply
-from stanford_su23.peg_hole.utils import get_env, linear_action, random_reset, encode_target_state, get_current_state, check_contact
+from stanford_su23.peg_hole.utils import get_env, linear_action, random_reset, encode_target_state, get_current_state, corrected_hole_pos
 from robosuite.utils.binding_utils import MjSimState
 import argparse
 import numpy as np 
-import os, inspect
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-print(currentdir)
-parentdir = os.path.dirname(os.path.dirname(currentdir))
-os.sys.path.insert(0, parentdir)
+import math
 
 
-def collect_demo(env, sqr_radius):
+def collect_demo(env, dilated):
 
     obs = random_reset(env)
     # while check_contact(env.sim, env.robots[0].robot_model) or check_contact(env.sim, env.robots[1].robot_model):
@@ -21,21 +16,26 @@ def collect_demo(env, sqr_radius):
 
     # x, y, z -> out of screen, x-axis, y-axis
     env.record()
-    sqr_target_pos = np.array([0, 0.25, 1.45])
-    sqr_target_pos = np.random.normal(sqr_target_pos, 1e-2)
-    sqr_target_quat = mat2quat(euler2mat(np.array([-np.pi, 0, 0])))
-    peg_target_pos = sqr_target_pos.copy()
-    peg_target_pos[1] = -peg_target_pos[1]
-    peg_target_pos[2] -= sqr_radius
-    peg_rot_quat = mat2quat(euler2mat(np.array([-np.pi/2, -np.pi, 0])))
-    peg_target_quat = quat_multiply(peg_rot_quat, sqr_target_quat)
-    target_state = encode_target_state(peg_target_pos, peg_target_quat, sqr_target_pos, sqr_target_quat)
-    obs, _ = linear_action(env, target_state)
-    peg_to_hole = obs["peg_to_hole"]
+
+    robot1_target_pos = obs["robot1_eef_pos"]
+    # robot1_target_quat = mat2quat(euler2mat(np.array([-np.pi, 0, 0])))
+    robot1_target_quat = np.array([1, 0, 0, 0])
+    robot0_target_pos = corrected_hole_pos(obs, dilated=dilated)
+    robot0_target_pos[1] = -robot1_target_pos[1]
+    # robot0_rot_quat = mat2quat(euler2mat(np.array([-np.pi/2, -np.pi, 0])))
+    # robot0_target_quat = quat_multiply(robot0_rot_quat, robot1_target_quat)
+    robot0_target_quat = np.array([0, math.sqrt(2)/2, math.sqrt(2)/2, 0])
+    target_state = encode_target_state(robot0_target_pos, robot0_target_quat, robot1_target_pos, robot1_target_quat)
+    def update_target_state(obs, target_state):
+        ts = target_state.copy()
+        ts[:3] = corrected_hole_pos(obs, dilated=dilated)
+        ts[1] = -ts[7]
+        return ts
+    obs, _ = linear_action(env, target_state, update_target_state=update_target_state)
     target_state = get_current_state(obs)
-    adjust = np.array([-0.1, 0, 0])
-    target_state[:3] += peg_to_hole+adjust
+    target_state[:3] = corrected_hole_pos(obs, dilated=dilated)
     obs, _ = linear_action(env, target_state)
+
     env.stop_record()
     env.flush()
 
@@ -73,10 +73,6 @@ if __name__ == "__main__":
     parser.add_argument("--playback", type=str, default=None)
     parser.add_argument("--dilated", action="store_true")
     args = parser.parse_args()
-    
-    sqr_radius = 0.17
-    if args.dilated:
-        sqr_radius = 0.085
 
     env = get_env(dilated=args.dilated)
 
@@ -87,7 +83,7 @@ if __name__ == "__main__":
         # wrap the environment with data collection wrapper
         env = BCRNN_DataCollectionWrapper(env, args.directory)
         for i in range(args.demos):
-            collect_demo(env, sqr_radius)
+            collect_demo(env, args.dilated)
             print("finished demo {}".format(i))
 
     env.close()

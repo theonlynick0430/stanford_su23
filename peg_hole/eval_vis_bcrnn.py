@@ -4,6 +4,7 @@ Evaluate a policy and model in an environment. No saving of data (see scripts/co
 
 import os
 import torch
+import numpy as np
 from configs.helpers import get_script_parser, load_base_config
 from muse.experiments.file_manager import ExperimentFileManager
 from muse.utils.file_utils import file_path_with_default_dir
@@ -85,8 +86,8 @@ if __name__ == "__main__":
 
         # step the environment with the policy action
         base_action = to_numpy((action.action)[0][0], check=True)
-        print("base_action")
-        print(base_action)
+        base_action /= np.linalg.norm(base_action)
+        base_action *= 0.05
         obs = env.step(base_action)
         env.render()
         i += 1
