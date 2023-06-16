@@ -37,7 +37,7 @@ def inverse_quaternion(quaternion):
     x, y, z, w = quaternion
     return np.array([-x, -y, -z, w])
 
-def linear_action(env, target_state, update_target_state=None, thresh=0.01, max_steps=150, render=True):
+def linear_action(env, target_state, update_target_state=None, thresh=0.05, max_steps=150, render=True):
     obs = env._get_observations()
     state = get_current_state(obs)
     error = np.linalg.norm(target_state-state)

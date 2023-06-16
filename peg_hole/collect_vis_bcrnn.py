@@ -21,7 +21,7 @@ def collect_demo(env, dilated):
     # robot1_target_quat = mat2quat(euler2mat(np.array([-np.pi, 0, 0])))
     robot1_target_quat = np.array([1, 0, 0, 0])
     robot0_target_pos = corrected_hole_pos(obs, dilated=dilated)
-    robot0_target_pos[1] = -robot1_target_pos[1]
+    robot0_target_pos[1] = robot1_target_pos[1] - 0.5
     # robot0_rot_quat = mat2quat(euler2mat(np.array([-np.pi/2, -np.pi, 0])))
     # robot0_target_quat = quat_multiply(robot0_rot_quat, robot1_target_quat)
     robot0_target_quat = np.array([0, math.sqrt(2)/2, math.sqrt(2)/2, 0])
@@ -29,11 +29,12 @@ def collect_demo(env, dilated):
     def update_target_state(obs, target_state):
         ts = target_state.copy()
         ts[:3] = corrected_hole_pos(obs, dilated=dilated)
-        ts[1] = -ts[7]
+        ts[1] = ts[7] - 0.5
         return ts
     obs, _ = linear_action(env, target_state, update_target_state=update_target_state)
     target_state = get_current_state(obs)
     target_state[:3] = corrected_hole_pos(obs, dilated=dilated)
+    target_state[1] -= 0.15
     obs, _ = linear_action(env, target_state)
 
     env.stop_record()
