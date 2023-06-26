@@ -12,7 +12,7 @@ def get_corrected_img_path(path):
 
 def load_data_from_folder(folder_path, filepath, img_h, img_w):
     ee_position = np.empty((0, 3), dtype=np.float64)
-    # ee_orientation = np.empty((0, 4), dtype=np.float64)
+    # ee_orientation = np.empty((0, 8), dtype=np.float64)
     image = np.empty((0, img_h, img_w, 3), dtype=np.uint8)
     # ego_image = np.empty((0, img_h, img_w, 3), dtype=np.uint8)
     action = np.empty((0, 3), dtype=np.float64)

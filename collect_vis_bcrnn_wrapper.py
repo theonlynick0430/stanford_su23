@@ -108,14 +108,14 @@ class BCRNN_DataCollectionWrapper(Wrapper):
             state = self.sim.get_state()
             self.q = np.append(self.q, [state.qpos], axis=0)
             self.qdot = np.append(self.qdot, [state.qvel], axis=0)
-            # robot1_pos = self.obs["robot1_eef_pos"]
-            hole_pos = corrected_hole_pos(self.obs)
+            robot1_pos = self.obs["robot1_eef_pos"]
+            # hole_pos = corrected_hole_pos(self.obs)
             robot1_quat = self.obs["robot1_eef_quat"]
-            # robot0_pos = self.obs["robot0_eef_pos"]
-            peg_pos = self.obs["hole_pos"]-self.obs["peg_to_hole"]
+            robot0_pos = self.obs["robot0_eef_pos"]
+            # peg_pos = self.obs["hole_pos"]-self.obs["peg_to_hole"]
             robot0_quat = self.obs["robot0_eef_quat"]
-            # self.ee_position = np.append(self.ee_position, [np.concatenate((robot0_pos, robot1_pos))], axis=0)
-            self.ee_position = np.append(self.ee_position, [np.concatenate((peg_pos, hole_pos))], axis=0)
+            self.ee_position = np.append(self.ee_position, [np.concatenate((robot0_pos, robot1_pos))], axis=0)
+            # self.ee_position = np.append(self.ee_position, [np.concatenate((peg_pos, hole_pos))], axis=0)
             self.ee_orientation = np.append(self.ee_orientation, [np.concatenate((robot0_quat, robot1_quat))], axis=0)
             self.image = np.append(self.image, [self.obs["birdview_image"]], axis=0)
             self.ego_image = np.append(self.ego_image, [self.obs["agentview_image"]], axis=0)

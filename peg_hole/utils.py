@@ -4,6 +4,7 @@ from robosuite.utils.transform_utils import quat2axisangle, quat_multiply, axisa
 from robosuite.utils.binding_utils import MjSimState
 import numpy as np 
 from robosuite.models.base import MujocoModel
+import robosuite as suite
 
 
 def get_env(dilated=False):
@@ -43,6 +44,7 @@ def linear_action(env, target_state, update_target_state=None, thresh=0.05, max_
     error = np.linalg.norm(target_state-state)
     steps = 0
     while error > thresh:
+        # for orientation, env takes in delta axis-angle commands relative to world axis
         iquat0 = inverse_quaternion(axisangle2quat(state[3:6]))
         iquat1 = inverse_quaternion(axisangle2quat(state[9:]))
         tquat0 = axisangle2quat(target_state[3:6])
