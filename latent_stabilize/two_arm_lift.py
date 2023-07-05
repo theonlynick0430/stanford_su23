@@ -1,7 +1,14 @@
 from stanford_su23.latent_stabilize.utils import get_env, get_current_state, linear_action, gripper_action, inverse_quaternion
-from robosuite.utils.transform_utils import quat_multiply, quat2axisangle
+from robosuite.utils.transform_utils import quat_multiply, quat2axisangle, quat2mat, mat2euler
 import numpy as np
 import math
+import time
+
+def eul_delta(quat, target_quat):
+    # returns target - current
+    quat_delta = quat_multiply(target_quat, inverse_quaternion(quat))
+    eul_delta = mat2euler(quat2mat(quat_delta)) # safe because delta is so small that we don't get gymbal lock
+    return eul_delta
 
 if __name__ == "__main__":
 
@@ -41,24 +48,42 @@ if __name__ == "__main__":
     obs, success = linear_action(env, target_state)
     obs = gripper_action(env, grasp=True)
 
+    # pick up
+    target_state = get_current_state(obs)
+    target_state[0][2] += 0.25
+    target_state[2][2] += 0.25
+    obs, success = linear_action(env, target_state)
+
     target_pot_quat = obs["pot_quat"]
 
-    # generate random traj for right arm
-    # enable reacting mode for left arm 
-    target_state = get_current_state(obs)
-    # target_state[2][2] += np.random.uniform(0.1, 0.15)
-    target_state[2][2] += 0.125
-    # target_state[2] = np.random.uniform(np.array([-0.25, 0, 1]), np.array([0.25, 0.25, 1.5]))
-    obs, success = linear_action(env, target_state, max_steps=1000)
+    for i in range(3):
+        print(f"action {i}")
+        # generate random traj for right arm
+        target_state = get_current_state(obs)
+        # target_state[2][0] += np.random.uniform(-0.125, 0.125)
+        target_state[2] += np.random.uniform(np.full(3, -0.125), np.full(3, 0.125))
+        # target_state[2] = np.random.uniform(np.array([-0.25, 0, 1]), np.array([0.25, 0.25, 1.5]))
+        obs, success = linear_action(env, target_state, max_steps=1000)
 
-    # move left arm to return pot back to original orientation
-    pot_quat = obs["pot_quat"]
-    quat_delta = quat_multiply(pot_quat, inverse_quaternion(target_pot_quat))
-    angle = np.linalg.norm(quat2axisangle(quat_delta))
-    z_offset = pot_width * math.sin(angle)
-    target_state = get_current_state(obs)
-    target_state[0][2] += z_offset
-    obs, success = linear_action(env, target_state, thresh=0.01)
+        # move left arm to return pot back to original orientation
+        # ASSUMPTIONS: 
+        # - we need to know the pot width
+        # - we need to know which movements correspond to which degrees of freedom:
+        #   - pos x-axis: rot z-axis
+        #   - pos y-axis: none
+        #   - pos (-) z-axis: rot x-axis
+        def update_target_state(obs, _):
+            ed = eul_delta(obs["pot_quat"], target_pot_quat)
+            x_offset = pot_width * math.sin(ed[2])
+            z_offset = -pot_width * math.sin(ed[0])
+            target_state = get_current_state(obs)
+            target_state[0][0] += x_offset
+            target_state[0][2] += z_offset
+            return target_state
+        obs, success = linear_action(env, update_target_state(obs, target_pot_quat), update_target_state=update_target_state, thresh=0.01)
+        error = eul_delta(obs["pot_quat"], target_pot_quat)
+        print(error)
+        time.sleep(3)
 
     for i in range(10000):
         env.render()

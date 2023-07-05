@@ -1,4 +1,4 @@
-from robosuite.utils.input_utils import *
+# from robosuite.utils.input_utils import *
 from stanford_su23.collect_vis_bcrnn_wrapper import BCRNN_DataCollectionWrapper
 from robosuite.utils.transform_utils import euler2mat, mat2quat, quat_multiply
 from stanford_su23.peg_hole.utils import get_env, linear_action, random_reset, encode_target_state, get_current_state, corrected_hole_pos

@@ -34,7 +34,7 @@ def inverse_quaternion(quaternion):
     return np.array([-x, -y, -z, w])
 
 # linear action ignores gripper (see functions below for gripper control)
-def linear_action(env, target_state, thresh=0.05, max_steps=150, render=True):
+def linear_action(env, target_state, update_target_state=None, thresh=0.05, max_steps=150, render=True):
     obs = env._get_observations()
     state = get_current_state(obs)
     error = np.linalg.norm(np.concatenate(target_state)-np.concatenate(state))
@@ -54,6 +54,8 @@ def linear_action(env, target_state, thresh=0.05, max_steps=150, render=True):
         if render:
             env.render()
         state = get_current_state(obs)
+        if update_target_state: 
+            target_state = update_target_state(obs, target_state)
         error = np.linalg.norm(np.concatenate(target_state)-np.concatenate(state))
     return obs, True
 
