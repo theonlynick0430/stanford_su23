@@ -2,7 +2,7 @@ import os
 import sys
 sys.path.append(os.path.join(os.getcwd(), "../.."))
 
-from stanford_su23.latent_stabilize.utils import get_env, get_current_state, linear_action, single_action, gripper_action, inverse_quaternion
+from stanford_su23.latent_stabilize.utils import get_env, get_current_state, linear_action, gripper_action, inverse_quaternion
 from robosuite.utils.transform_utils import quat_multiply, quat2axisangle, quat2mat, mat2euler
 import numpy as np
 import math
@@ -105,7 +105,6 @@ if __name__ == "__main__":
 
         # target_state[2] = np.random.uniform(np.array([-0.25, 0, 1]), np.array([0.25, 0.25, 1.5]))
         obs, success = linear_action(env, target_state, max_steps=1000)
-        # obs, success = single_action(env, target_state, max_steps=1000)
 
         # move left arm to return pot back to original orientation
         # ASSUMPTIONS:
